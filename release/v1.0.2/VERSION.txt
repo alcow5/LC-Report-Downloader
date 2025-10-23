@@ -1,0 +1,26 @@
+LC Report Downloader v1.0.2
+============================
+
+Release Date: October 23, 2025
+
+Changes in this version:
+- Fixed 500 errors when switching user accounts
+- Fixed 403 authentication errors when downloading reports
+- Fixed 400 authentication errors for Azure Blob Storage downloads
+- Improved credential handling and session management
+- Added proper authentication headers for API requests
+- Removed unnecessary authentication for pre-signed download URLs
+- Added comprehensive user documentation
+- Enhanced error messages and debugging information
+
+System Requirements:
+- Windows 10 or later
+- Internet connection
+- No additional software installation required
+
+Files included:
+- LCReportDownloader_v1.0.2.exe (main application)
+- README.md (user documentation)
+- VERSION.txt (this file)
+
+For support, contact: alcow5@gmail.com

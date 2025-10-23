@@ -5,8 +5,8 @@ A simple desktop application for downloading financial reports from the LCE Gate
 ## 🚀 Quick Start
 
 ### Download & Run
-1. **Download** the latest `LCReportDownloader_v1.0.1.exe` from the [Releases](https://github.com/alcow5/LC-Report-Dowloader/releases) page
-2. **Double-click** `LCReportDownloader_v1.0.1.exe` to run the application
+1. **Download** the latest `LCReportDownloader_v1.0.2.exe` from the [Releases](https://github.com/alcow5/LC-Report-Dowloader/releases) page
+2. **Double-click** `LCReportDownloader_v1.0.2.exe` to run the application
 3. **No installation required** - it's a standalone executable!
 
 ## 📋 How to Use
@@ -40,18 +40,22 @@ A simple desktop application for downloading financial reports from the LCE Gate
 - Make sure you're running Windows 10 or later
 - Try running as administrator if you get permission errors
 
-**Getting 500 errors?**
-- Check that your credentials are correct
-- Make sure your internet connection is working
-- Try switching users (the app now handles this properly)
+**Getting 500 errors when switching users?**
+- Fixed in v1.0.1+ - the app now handles user switching properly
+- Make sure you're using the latest version
+
+**Getting 403/400 errors when downloading?**
+- Fixed in v1.0.2+ - download authentication issues resolved
+- Make sure you're using the latest version
 
 **Can't download reports?**
 - Verify you have write permissions to the download folder
 - Check that you have enough disk space
+- Make sure you're using the latest version (v1.0.2+)
 
 ## 📁 What's Included
 
-- `LCReportDownloader_v1.0.1.exe` - The main application
+- `LCReportDownloader_v1.0.2.exe` - The main application
 - `README.md` - This documentation
 - Source code (for developers)
 
