@@ -1,0 +1,22 @@
+LC Report Downloader v1.0.1
+============================
+
+Release Date: October 22, 2025
+
+Changes in this version:
+- Fixed 500 errors when switching user accounts
+- Improved credential handling and session management
+- Added comprehensive user documentation
+- Enhanced error messages and debugging information
+
+System Requirements:
+- Windows 10 or later
+- Internet connection
+- No additional software installation required
+
+Files included:
+- LCReportDownloader.exe (main application)
+- README.md (user documentation)
+- VERSION.txt (this file)
+
+For support, contact: alcow5@gmail.com
