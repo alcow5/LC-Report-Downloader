@@ -17,7 +17,7 @@ System Requirements:
 - No additional software installation required
 
 Files included:
-- LCReportDownloader.exe (main application)
+- LCReportDownloader_v1.0.1.exe (main application)
 - README.md (user documentation)
 - VERSION.txt (this file)
 
