@@ -224,8 +224,16 @@ class LCReportDownloader(QMainWindow):
             self.progress_bar.setVisible(True)
             self.progress_bar.setValue(0)
             
-            # Download file
-            response = requests.get(url, stream=True)
+            # Get fresh token and HMAC header for download
+            token = get_token()
+            hmac_header = generate_hmac_header("GET", url)
+            
+            # Download file with proper authentication headers
+            headers = {
+                "Authorization": f"Bearer {token}",
+                "HMacAuthorizationHeader": hmac_header
+            }
+            response = requests.get(url, headers=headers, stream=True)
             response.raise_for_status()
             
             total_size = int(response.headers.get('content-length', 0))
