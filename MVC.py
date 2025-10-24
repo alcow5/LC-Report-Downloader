@@ -109,7 +109,7 @@ def download_reports(token, username):
 
 def main():
     token = get_token()
-    download_reports(token, GATEWAY_USERNAME)
+    download_reports(token, GATEWAY_USERNAME)  # pyright: ignore[reportUndefinedVariable]
 
 if __name__ == "__main__":
     main()
