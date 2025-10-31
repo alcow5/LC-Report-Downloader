@@ -2,14 +2,14 @@
 
 A simple desktop application for downloading financial reports from the LCE Gateway portal.
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Download & Run
 1. **Download** the latest `LCReportDownloader_v1.0.2.exe` from the [Releases](https://github.com/alcow5/LC-Report-Dowloader/releases) page
 2. **Double-click** `LCReportDownloader_v1.0.2.exe` to run the application
 3. **No installation required** - it's a standalone executable!
 
-## 📋 How to Use
+## How to Use
 
 ### Step 1: Enter Your Credentials
 - **Username**: Your LCE Gateway username
@@ -53,19 +53,19 @@ A simple desktop application for downloading financial reports from the LCE Gate
 - Check that you have enough disk space
 - Make sure you're using the latest version (v1.0.2+)
 
-## 📁 What's Included
+##  What's Included
 
 - `LCReportDownloader_v1.0.2.exe` - The main application
 - `README.md` - This documentation
 - Source code (for developers)
 
-## 🛡️ Security
+##  Security
 
 - Your credentials are only stored in memory during the session
 - No credentials are saved to disk
 - All API communication uses secure HMAC authentication
 
-## 📞 Support
+##  Support
 
 Having issues? Contact: [alcow5@gmail.com](mailto:alcow5@gmail.com)
 
