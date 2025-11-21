@@ -1,0 +1,34 @@
+LC Report Downloader v1.0.3
+============================
+
+Release Date: December 2024
+
+Changes in this version:
+- Fixed 401 authentication errors - improved URL encoding for HMAC signature generation
+- Added comprehensive debug logging to help diagnose authentication issues
+- Improved environment variable handling to prevent stale credential issues
+- Enhanced error messages with detailed debugging information
+- Added automatic debug log file creation (saved to Downloads/LC Reports/_debug_logs/)
+- Better validation of credentials before attempting authentication
+- Fixed query parameter encoding consistency between HMAC calculation and API requests
+- Added "Download All" button to save every filtered report in a single action
+- Improved progress bar updates when downloading multiple reports
+
+Debug Logging:
+- All authentication attempts are automatically logged to debug files
+- Log files include system information, request details, and error diagnostics
+- Log file location is shown in error messages for easy troubleshooting
+- Logs are saved to: %USERPROFILE%\Downloads\LC Reports\_debug_logs\
+
+System Requirements:
+- Windows 10 or later
+- Internet connection
+- No additional software installation required
+
+Files included:
+- LCReportDownloader_v1.0.3.exe (main application)
+- README.md (user documentation)
+- VERSION.txt (this file)
+
+For support, contact: alcow5@gmail.com
+

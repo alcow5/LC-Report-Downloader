@@ -1,13 +1,15 @@
 import sys
 import os
+import urllib.parse
 from datetime import datetime, timedelta
+from pathlib import Path
 from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
                             QHBoxLayout, QLabel, QLineEdit, QPushButton, 
                             QTableWidget, QTableWidgetItem, QMessageBox,
                             QProgressBar, QFileDialog, QDateEdit)
 from PySide6.QtCore import Qt, QDate
 from PySide6.QtGui import QFont, QIcon
-from MVC import get_token, download_reports, generate_hmac_header, REPORT_URL_BASE
+from MVC import get_token, download_reports, generate_hmac_header, REPORT_URL_BASE, debug_logger, DEBUG_LOG_FILE
 import requests
 import json
 
@@ -88,6 +90,12 @@ class LCReportDownloader(QMainWindow):
         connect_button = QPushButton("Connect & Load Reports")
         connect_button.clicked.connect(self.load_reports)
         layout.addWidget(connect_button)
+
+        # Download all button
+        self.download_all_button = QPushButton("Download All")
+        self.download_all_button.setEnabled(False)
+        self.download_all_button.clicked.connect(self.download_all_reports)
+        layout.addWidget(self.download_all_button)
         
         # Reports table
         self.reports_table = QTableWidget()
@@ -104,8 +112,16 @@ class LCReportDownloader(QMainWindow):
         # Status bar
         self.statusBar().showMessage("Ready")
         
+        # Show debug log location in status bar tooltip
+        # Log file is created when logger is initialized, so it should exist
+        try:
+            self.statusBar().setToolTip(f"Debug logs saved to: {DEBUG_LOG_DIR}\nLatest: {DEBUG_LOG_FILE.name}")
+        except Exception:
+            pass  # Silently fail if there's an issue
+        
         # Load saved credentials if they exist
         self.load_saved_credentials()
+        self.reports_data = []
         
     def load_saved_credentials(self):
         """Load saved credentials from environment variables"""
@@ -114,45 +130,80 @@ class LCReportDownloader(QMainWindow):
         
     def save_credentials(self):
         """Save credentials to environment variables"""
-        # Clear previous credentials first
-        if "GATEWAY_USERNAME" in os.environ:
-            del os.environ["GATEWAY_USERNAME"]
-        if "GATEWAY_PASSWORD" in os.environ:
-            del os.environ["GATEWAY_PASSWORD"]
-        if "HMAC_USER" in os.environ:
-            del os.environ["HMAC_USER"]
-        if "HMAC_KEY" in os.environ:
-            del os.environ["HMAC_KEY"]
-            
-        # Set new credentials
-        os.environ["GATEWAY_USERNAME"] = self.username_input.text()
-        os.environ["GATEWAY_PASSWORD"] = self.password_input.text()
-        os.environ["HMAC_USER"] = self.hmac_user_input.text()
-        os.environ["HMAC_KEY"] = self.hmac_key_input.text()
+        # Clear previous credentials first (more thorough cleanup)
+        for key in ["GATEWAY_USERNAME", "GATEWAY_PASSWORD", "HMAC_USER", "HMAC_KEY"]:
+            if key in os.environ:
+                del os.environ[key]
+        
+        # Set new credentials with proper string conversion
+        username = self.username_input.text().strip()
+        password = self.password_input.text().strip()
+        hmac_user = self.hmac_user_input.text().strip()
+        hmac_key = self.hmac_key_input.text().strip()
+        
+        os.environ["GATEWAY_USERNAME"] = username
+        os.environ["GATEWAY_PASSWORD"] = password
+        os.environ["HMAC_USER"] = hmac_user
+        os.environ["HMAC_KEY"] = hmac_key
         
     def load_reports(self):
         """Load available reports from the API"""
         try:
+            # Validate credentials before proceeding
+            username = self.username_input.text().strip()
+            password = self.password_input.text().strip()
+            hmac_user = self.hmac_user_input.text().strip()
+            hmac_key = self.hmac_key_input.text().strip()
+            
+            if not all([username, password, hmac_user, hmac_key]):
+                QMessageBox.warning(self, "Missing Credentials", 
+                                  "Please fill in all credential fields.")
+                return
+            
             self.save_credentials()
+            self.reports_data = []
+            self.download_all_button.setEnabled(False)
+            
             # Debug: Show credentials (mask password and HMAC key)
             debug_info = (
-                f"Username: {self.username_input.text()}\n"
-                f"Password: {'*' * len(self.password_input.text())}\n"
-                f"HMAC User: {self.hmac_user_input.text()}\n"
-                f"HMAC Key: {'*' * len(self.hmac_key_input.text())}\n"
+                f"Username: {username}\n"
+                f"Password: {'*' * len(password)}\n"
+                f"HMAC User: {hmac_user}\n"
+                f"HMAC Key: {'*' * len(hmac_key)}\n"
             )
             print("[DEBUG] Credentials in use:\n" + debug_info)
-            token = get_token()
-            print(f"[DEBUG] Token: {token}")
+            
+            # Get token first
+            try:
+                token = get_token()
+                print(f"[DEBUG] Token obtained successfully (length: {len(token)})")
+            except Exception as e:
+                error_text = f"Failed to obtain authentication token:\n{str(e)}\n\n[DEBUG]\n{debug_info}"
+                QMessageBox.critical(self, "Authentication Error", error_text)
+                self.statusBar().showMessage("Error: Failed to authenticate")
+                return
             
             # Clear existing table
             self.reports_table.setRowCount(0)
             
-            # Get reports
+            # Get reports - properly encode query parameters
             file_name = "all"
-            full_url = f"{REPORT_URL_BASE}?userName={self.username_input.text()}&fileName={file_name}"
-            hmac_header = generate_hmac_header("GET", full_url)
-            print(f"[DEBUG] HMAC Header: {hmac_header}")
+            # Use urlencode to ensure proper encoding of query parameters
+            query_params = urllib.parse.urlencode({
+                "userName": username,
+                "fileName": file_name
+            })
+            full_url = f"{REPORT_URL_BASE}?{query_params}"
+            print(f"[DEBUG] Request URL: {full_url}")
+            
+            try:
+                hmac_header = generate_hmac_header("GET", full_url)
+                print(f"[DEBUG] HMAC Header: {hmac_header}")
+            except Exception as e:
+                error_text = f"Failed to generate HMAC header:\n{str(e)}\n\n[DEBUG]\n{debug_info}"
+                QMessageBox.critical(self, "HMAC Error", error_text)
+                self.statusBar().showMessage("Error: Failed to generate HMAC")
+                return
             
             headers = {
                 "Authorization": f"Bearer {token}",
@@ -160,14 +211,66 @@ class LCReportDownloader(QMainWindow):
                 "HMacAuthorizationHeader": hmac_header
             }
             
-            response = requests.get(full_url, headers=headers)
+            # Log credential info (masked) for debugging
+            debug_logger.debug("=" * 80)
+            debug_logger.debug("API REQUEST - GetReportBlobs")
+            debug_logger.debug("=" * 80)
+            debug_logger.debug(f"Username: {username}")
+            debug_logger.debug(f"HMAC User: {hmac_user}")
+            debug_logger.debug(f"Password Length: {len(password)} chars")
+            debug_logger.debug(f"HMAC Key Length: {len(hmac_key)} chars")
+            debug_logger.debug(f"Request URL: {full_url}")
+            debug_logger.debug(f"Request Headers:")
+            for key, value in headers.items():
+                if key == "Authorization":
+                    debug_logger.debug(f"  {key}: Bearer {value.split(' ')[1][:50]}...")
+                elif key == "HMacAuthorizationHeader":
+                    debug_logger.debug(f"  {key}: {value}")
+                else:
+                    debug_logger.debug(f"  {key}: {value}")
+            
+            print(f"[DEBUG] Making request to: {full_url}")
+            try:
+                response = requests.get(full_url, headers=headers)
+                debug_logger.debug(f"Response Status Code: {response.status_code}")
+                debug_logger.debug(f"Response Headers: {dict(response.headers)}")
+                debug_logger.debug(f"Response Body (first 500 chars): {response.text[:500]}")
+                print(f"[DEBUG] Response status: {response.status_code}")
+            except requests.exceptions.RequestException as e:
+                debug_logger.error(f"Request exception: {str(e)}")
+                error_text = f"Network error occurred:\n{str(e)}\n\nCheck debug log: {DEBUG_LOG_FILE}"
+                QMessageBox.critical(self, "Network Error", error_text)
+                self.statusBar().showMessage("Network error occurred")
+                return
+            
             try:
                 response.raise_for_status()
-            except Exception as e:
-                # Show full error details in a popup
-                error_text = f"Status Code: {response.status_code}\nResponse: {response.text}\n\n{str(e)}\n\n[DEBUG]\n" + debug_info + f"Token: {token}\nHMAC Header: {hmac_header}"
+            except requests.exceptions.HTTPError as e:
+                # Log detailed error information
+                debug_logger.error("=" * 80)
+                debug_logger.error("API REQUEST FAILED")
+                debug_logger.error("=" * 80)
+                debug_logger.error(f"Status Code: {response.status_code}")
+                debug_logger.error(f"Response Text: {response.text}")
+                debug_logger.error(f"Request URL: {full_url}")
+                debug_logger.error(f"Request Headers: {headers}")
+                debug_logger.error(f"Error: {str(e)}")
+                debug_logger.error("=" * 80)
+                
+                # Show full error details in a popup with log file location
+                error_text = (
+                    f"Status Code: {response.status_code}\n"
+                    f"Response: {response.text[:500]}\n\n"
+                    f"Error: {str(e)}\n\n"
+                    f"[DEBUG INFO]\n{debug_info}"
+                    f"Request URL: {full_url}\n"
+                    f"Token: {token[:50]}...\n"
+                    f"HMAC Header: {hmac_header}\n\n"
+                    f"📋 Full debug log saved to:\n{DEBUG_LOG_FILE}\n\n"
+                    f"Please share this log file for troubleshooting."
+                )
                 QMessageBox.critical(self, "API Error", error_text)
-                self.statusBar().showMessage("Error loading reports (see popup)")
+                self.statusBar().showMessage(f"Error loading reports: {response.status_code} - See log: {DEBUG_LOG_FILE.name}")
                 return
             
             report_list = json.loads(response.json())
@@ -190,6 +293,9 @@ class LCReportDownloader(QMainWindow):
                 if in_range(extract_date_from_filename(report.get("ReportName", "")))
             ]
             
+            self.reports_data = filtered_reports
+            self.download_all_button.setEnabled(bool(filtered_reports))
+
             # Populate table
             self.reports_table.setRowCount(len(filtered_reports))
             for i, report in enumerate(filtered_reports):
@@ -207,6 +313,8 @@ class LCReportDownloader(QMainWindow):
             self.statusBar().showMessage(f"Loaded {len(filtered_reports)} reports from {start_date} to {end_date}")
             
         except Exception as e:
+            self.reports_data = []
+            self.download_all_button.setEnabled(False)
             QMessageBox.critical(self, "Error", f"Failed to load reports: {str(e)}")
             self.statusBar().showMessage("Error loading reports")
     
@@ -223,21 +331,11 @@ class LCReportDownloader(QMainWindow):
             # Show progress
             self.progress_bar.setVisible(True)
             self.progress_bar.setValue(0)
-            
-            # Download file - Azure Blob Storage URLs are pre-signed and don't need additional auth
-            response = requests.get(url, stream=True)
-            response.raise_for_status()
-            
-            total_size = int(response.headers.get('content-length', 0))
-            block_size = 1024
-            downloaded = 0
-            
-            with open(filepath, 'wb') as f:
-                for data in response.iter_content(block_size):
-                    downloaded += len(data)
-                    f.write(data)
-                    progress = int((downloaded / total_size) * 100)
-                    self.progress_bar.setValue(progress)
+            self._download_file(
+                url,
+                filepath,
+                lambda percent: self.progress_bar.setValue(percent)
+            )
             
             self.progress_bar.setVisible(False)
             QMessageBox.information(self, "Success", f"Report downloaded successfully to:\n{filepath}")
@@ -245,6 +343,79 @@ class LCReportDownloader(QMainWindow):
         except Exception as e:
             self.progress_bar.setVisible(False)
             QMessageBox.critical(self, "Error", f"Failed to download report: {str(e)}")
+
+    def download_all_reports(self):
+        """Download all loaded reports to a selected directory"""
+        if not self.reports_data:
+            QMessageBox.information(self, "No Reports", "There are no reports to download. Please load reports first.")
+            return
+
+        save_dir = QFileDialog.getExistingDirectory(self, "Select Save Location")
+        if not save_dir:
+            return
+
+        total_reports = len(self.reports_data)
+        errors = []
+
+        self.progress_bar.setVisible(True)
+        self.progress_bar.setValue(0)
+
+        for index, report in enumerate(self.reports_data):
+            name = report.get("ReportName")
+            url = report.get("ReportBlobUri")
+
+            if not name or not url:
+                continue
+
+            filepath = os.path.join(save_dir, name)
+
+            try:
+                self._download_file(
+                    url,
+                    filepath,
+                    lambda percent, idx=index: self.progress_bar.setValue(
+                        int(((idx + percent / 100) / total_reports) * 100)
+                    )
+                )
+            except Exception as e:
+                errors.append(f"{name}: {str(e)}")
+
+        self.progress_bar.setVisible(False)
+
+        if errors:
+            QMessageBox.warning(
+                self,
+                "Download Complete (with issues)",
+                "Some reports could not be downloaded:\n\n" + "\n".join(errors)
+            )
+        else:
+            QMessageBox.information(
+                self,
+                "Download Complete",
+                f"All {total_reports} reports were downloaded successfully."
+            )
+
+    def _download_file(self, url, filepath, progress_callback=None):
+        """Helper method to download a file with optional progress updates"""
+        response = requests.get(url, stream=True)
+        response.raise_for_status()
+
+        total_size = int(response.headers.get("content-length", 0))
+        block_size = 1024 * 32
+        downloaded = 0
+
+        with open(filepath, "wb") as f:
+            for data in response.iter_content(block_size):
+                if not data:
+                    continue
+                f.write(data)
+                downloaded += len(data)
+                if total_size > 0 and progress_callback:
+                    progress = int(downloaded / total_size * 100)
+                    progress_callback(progress)
+
+        if total_size == 0 and progress_callback:
+            progress_callback(100)
 
 def main():
     app = QApplication(sys.argv)
